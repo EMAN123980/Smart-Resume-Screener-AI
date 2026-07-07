@@ -135,26 +135,21 @@ def extract_text_pdf(uploaded_file):
 
 
 def extract_text_ocr(uploaded_file):
-    """
-    Extract text from scanned/image PDFs using OCR.
-    """
+    try:
+        uploaded_file.seek(0)
+        pdf_bytes = uploaded_file.read()
 
-    uploaded_file.seek(0)
+        images = convert_from_bytes(pdf_bytes)
 
-    pdf_bytes = uploaded_file.read()
+        text = ""
 
-    images = convert_from_bytes(
-        pdf_bytes,
-        poppler_path=POPPLER_PATH
-    )
+        for image in images:
+            text += pytesseract.image_to_string(image)
 
-    text = ""
+        return text
 
-    for image in images:
-
-        text += pytesseract.image_to_string(image)
-
-    return text
+    except Exception:
+        return ""
 
 
 def extract_resume_text(uploaded_file):
