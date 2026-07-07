@@ -1,91 +1,123 @@
+# ==========================================
+# Smart Resume Screener AI
+# Industry Edition v5.0
+# Part 1
+# ==========================================
+
 import streamlit as st
+import pandas as pd
 import pdfplumber
 import pytesseract
 import re
-import pandas as pd
+
+from pdf2image import convert_from_bytes
+from PIL import Image
+
 import plotly.express as px
 import plotly.graph_objects as go
-from PIL import Image
-from pdf2image import convert_from_bytes
-from reportlab.platypus import SimpleDocTemplate, Paragraph
-from reportlab.lib.styles import getSampleStyleSheet
-from io import BytesIO
-# =====================================
-# Tesseract OCR Path (Windows)
-# =====================================
-pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 
-# =====================================
-# Page Configuration
-# =====================================
+from reportlab.platypus import (
+    SimpleDocTemplate,
+    Paragraph
+)
+
+from reportlab.lib.styles import getSampleStyleSheet
+
+from io import BytesIO
+
+from styles import load_css
+
+# ==========================================
+# OCR Configuration
+# ==========================================
+
+pytesseract.pytesseract.tesseract_cmd = (
+    r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+)
+
+POPPLER_PATH = r"C:\Srf poppler\Library\bin"
+
+# ==========================================
+# Streamlit Page Config
+# ==========================================
+
 st.set_page_config(
     page_title="Smart Resume Screener AI",
     page_icon="📄",
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
 
-# =====================================
-# Custom CSS
-# =====================================
-st.markdown("""
-<style>
+# ==========================================
+# Load CSS
+# ==========================================
 
-.main-title{
-text-align:center;
-font-size:42px;
-font-weight:bold;
-color:#2563EB;
-}
+load_css()
 
-.subtitle{
-text-align:center;
-font-size:18px;
-color:gray;
-margin-bottom:25px;
-}
+# ==========================================
+# Sidebar
+# ==========================================
 
-.card{
-background:#F8FAFC;
-padding:20px;
-border-radius:15px;
-box-shadow:2px 2px 12px rgba(0,0,0,.15);
-margin-bottom:15px;
-}
+with st.sidebar:
 
-</style>
-""", unsafe_allow_html=True)
+    st.title("📄 Smart Resume Screener AI")
 
-# =====================================
-# OCR Functions
-# =====================================
+    st.markdown("---")
 
-def extract_text_ocr(uploaded_file):
+    st.success("Industry Edition v5.0")
 
-    uploaded_file.seek(0)
+    st.write("### Features")
 
-    pdf_bytes = uploaded_file.read()
+    st.write("✅ OCR Support")
+    st.write("✅ ATS Score")
+    st.write("✅ Skills Detection")
+    st.write("✅ Resume Ranking")
+    st.write("✅ AI Recommendation")
+    st.write("✅ Job Role Prediction")
+    st.write("✅ PDF Report")
+    st.write("✅ Charts")
+    st.write("✅ JD Matching")
 
-    images = convert_from_bytes(
-        pdf_bytes,
-        poppler_path=r"C:\Srf poppler\Library\bin"
+    st.markdown("---")
+
+    st.info(
+        "Upload a Resume PDF to start analysis."
     )
 
-    text = ""
+# ==========================================
+# Main Header
+# ==========================================
 
-    for img in images:
-        text += pytesseract.image_to_string(img)
+st.title("📄 Smart Resume Screener AI")
 
-    return text
+st.caption(
+    "AI Powered Resume Screening System"
+)
 
+st.markdown("---")
 
-def extract_resume_text(uploaded_file):
+# ==========================================
+# Resume Upload
+# ==========================================
 
-    text = ""
+uploaded_file = st.file_uploader(
+    "Upload Resume (PDF)",
+    type=["pdf"]
+)
+# ==========================================
+# PART 2
+# OCR + PDF Text Extraction
+# ==========================================
 
+def extract_text_pdf(uploaded_file):
+    """
+    Extract text from a normal (text-based) PDF.
+    """
     uploaded_file.seek(0)
 
-    try:
+    text = ""
 
+    try:
         with pdfplumber.open(uploaded_file) as pdf:
 
             for page in pdf.pages:
@@ -93,120 +125,106 @@ def extract_resume_text(uploaded_file):
                 page_text = page.extract_text()
 
                 if page_text:
-
                     text += page_text + "\n"
 
-    except:
+    except Exception:
 
-        pass
+        text = ""
+
+    return text
+
+
+def extract_text_ocr(uploaded_file):
+    """
+    Extract text from scanned/image PDFs using OCR.
+    """
+
+    uploaded_file.seek(0)
+
+    pdf_bytes = uploaded_file.read()
+
+    images = convert_from_bytes(
+        pdf_bytes,
+        poppler_path=POPPLER_PATH
+    )
+
+    text = ""
+
+    for image in images:
+
+        text += pytesseract.image_to_string(image)
+
+    return text
+
+
+def extract_resume_text(uploaded_file):
+    """
+    Automatically choose PDF text extraction
+    or OCR depending on the resume.
+    """
+
+    text = extract_text_pdf(uploaded_file)
+
+    # If almost no text is found,
+    # automatically use OCR.
 
     if len(text.strip()) < 20:
-
-        uploaded_file.seek(0)
 
         text = extract_text_ocr(uploaded_file)
 
     return text
 
-# =====================================
-# Header
-# =====================================
 
-st.markdown(
-"""
-<div class='main-title'>
-📄 Smart Resume Screener AI
-</div>
-
-<div class='subtitle'>
-AI Powered Resume Screening & ATS Analyzer
-</div>
-""",
-unsafe_allow_html=True
-)
-
-# =====================================
-# Sidebar
-# =====================================
-
-with st.sidebar:
-
-    st.title("📌 Navigation")
-
-    st.success("Industry Edition")
-
-    st.markdown("---")
-
-    st.write("🏠 Dashboard")
-
-    st.write("📄 Resume Analysis")
-
-    st.write("📊 ATS Report")
-
-    st.write("🤖 AI Recommendation")
-
-    st.write("📥 Download Report")
-
-    st.markdown("---")
-
-    st.info("Developed using Python + Streamlit")
-    # =====================================
-# Resume Upload
-# =====================================
-
-st.markdown("## 📤 Upload Resume")
-
-uploaded_file = st.file_uploader(
-    "Upload your Resume (PDF)",
-    type=["pdf"]
-)
-
-# =====================================
-# Resume Processing
-# =====================================
+# ==========================================
+# Start Resume Analysis
+# ==========================================
 
 if uploaded_file is not None:
 
     st.success("✅ Resume Uploaded Successfully!")
 
-    with st.spinner("🤖 AI is analyzing your resume..."):
+    text = extract_resume_text(uploaded_file)
 
-        text = extract_resume_text(uploaded_file)
+    st.subheader("📄 Extracted Resume Text")
 
-    # =====================================
-    # Show Extracted Text
-    # =====================================
+    st.text_area(
+        "Resume Content",
+        text,
+        height=300
+    )
+    # ==========================================
+# PART 3
+# Candidate Information Extraction
+# ==========================================
 
-    with st.expander("📄 View Extracted Resume"):
-
-        st.text_area(
-            "Resume Text",
-            text,
-            height=300
-        )
-
-    # =====================================
+    # --------------------------------------
     # Candidate Name
-    # =====================================
+    # --------------------------------------
+
+    lines = [line.strip() for line in text.split("\n") if line.strip()]
 
     candidate_name = "Not Found"
 
-    for line in text.split("\n"):
-
-        line = line.strip()
+    for line in lines[:5]:
 
         if (
-            len(line) > 3
+            len(line.split()) >= 2
             and len(line.split()) <= 4
-            and "@" not in line
-            and not any(ch.isdigit() for ch in line)
+            and not any(char.isdigit() for char in line)
+            and "resume" not in line.lower()
+            and "curriculum" not in line.lower()
+            and "vitae" not in line.lower()
+            and "email" not in line.lower()
         ):
             candidate_name = line
             break
 
-    # =====================================
+    st.subheader("👤 Candidate Name")
+    st.success(candidate_name)
+
+    # --------------------------------------
     # Email Detection
-    # =====================================
+    # --------------------------------------
 
     emails = re.findall(
         r'[\w\.-]+@[\w\.-]+\.\w+',
@@ -215,36 +233,82 @@ if uploaded_file is not None:
 
     email = emails[0] if emails else "Not Found"
 
-    # =====================================
+    st.subheader("📧 Email")
+
+    if emails:
+        st.success(email)
+    else:
+        st.error("No Email Found")
+
+    # --------------------------------------
     # Phone Detection
-    # =====================================
+    # --------------------------------------
 
     phones = re.findall(
-        r'(\+?\d[\d\s\-]{8,15}\d)',
+        r'(\+?\d[\d\s\-\(\)]{8,18}\d)',
         text
     )
 
     phone = phones[0] if phones else "Not Found"
 
-    # =====================================
+    st.subheader("📞 Phone Number")
+
+    if phones:
+        st.success(phone)
+    else:
+        st.error("No Phone Number Found")
+
+    # --------------------------------------
     # Education Detection
-    # =====================================
+    # --------------------------------------
 
     education_keywords = [
 
-        "BS","BSc","Bachelor",
+        "Matric",
 
-        "MS","MSc","Master",
+        "Intermediate",
+
+        "ICS",
+
+        "FA",
+
+        "FSc",
+
+        "DAE",
+
+        "Bachelor",
+
+        "BS",
+
+        "BSc",
+
+        "BE",
+
+        "BBA",
+
+        "BCS",
+
+        "Master",
+
+        "MS",
+
+        "MSc",
+
+        "MBA",
+
+        "MPhil",
+
+        "PhD",
 
         "Computer Science",
 
         "Software Engineering",
 
-        "Intermediate",
+        "Information Technology",
 
-        "Matric",
+        "Artificial Intelligence",
 
-        "PhD"
+        "Data Science"
 
     ]
 
@@ -256,71 +320,92 @@ if uploaded_file is not None:
 
             found_education.append(edu)
 
-    # =====================================
-    # Candidate Information
-    # =====================================
+    st.subheader("🎓 Education")
 
-    st.markdown("## 👤 Candidate Information")
+    if found_education:
 
-    col1, col2 = st.columns(2)
+        st.success(", ".join(sorted(set(found_education))))
 
-    with col1:
+    else:
 
-        st.info(f"👤 Name : {candidate_name}")
+        st.warning("Education Not Found")
 
-        st.info(f"📧 Email : {email}")
-
-    with col2:
-
-        st.info(f"📞 Phone : {phone}")
-
-        if found_education:
-
-            st.success(
-                "🎓 " + ", ".join(found_education)
-            )
-
-        else:
-
-            st.warning("Education Not Found")
-            # =====================================
+    # --------------------------------------
     # Experience Detection
-    # =====================================
+    # --------------------------------------
 
     experience = re.findall(
+
         r'(\d+\+?\s*(?:years?|yrs?|months?))',
+
         text,
+
         re.IGNORECASE
+
     )
 
-    # =====================================
+    st.subheader("💼 Experience")
+
+    if experience:
+
+        st.success(", ".join(experience))
+
+    else:
+
+        st.warning("Experience Not Found")
+        # ==========================================
+# PART 4
+# Skills Detection + ATS + AI Analysis
+# ==========================================
+
+    # --------------------------------------
     # Skills Detection
-    # =====================================
+    # --------------------------------------
 
     skills = [
 
         "Python",
         "Java",
-        "C++",
         "C",
-        "SQL",
-        "MySQL",
+        "C++",
+        "C#",
         "HTML",
         "CSS",
         "JavaScript",
-        "PHP",
         "React",
+        "Angular",
         "Node.js",
-        "Flask",
+        "PHP",
+        "Laravel",
         "Django",
-        "Streamlit",
+        "Flask",
+        "SQL",
+        "MySQL",
+        "PostgreSQL",
+        "MongoDB",
+        "Oracle",
         "Git",
+        "GitHub",
+        "Docker",
+        "Kubernetes",
+        "Linux",
+        "AWS",
+        "Azure",
+        "Google Cloud",
+        "Firebase",
         "Machine Learning",
         "Deep Learning",
         "Artificial Intelligence",
         "Data Science",
         "Data Analysis",
+        "Pandas",
+        "NumPy",
+        "TensorFlow",
+        "PyTorch",
+        "OpenCV",
+        "Streamlit",
         "Power BI",
+        "Tableau",
         "Excel"
 
     ]
@@ -333,65 +418,9 @@ if uploaded_file is not None:
 
             found_skills.append(skill)
 
-    # =====================================
-    # ATS Score
-    # =====================================
+    found_skills = sorted(list(set(found_skills)))
 
-    score = min(len(found_skills) * 5, 100)
-
-    # =====================================
-    # Job Role Prediction
-    # =====================================
-
-    text_lower = text.lower()
-
-    job_role = "General Candidate"
-
-    if "machine learning" in text_lower or "artificial intelligence" in text_lower:
-
-        job_role = "Machine Learning Engineer"
-
-    elif "python" in text_lower and ("django" in text_lower or "flask" in text_lower):
-
-        job_role = "Python Backend Developer"
-
-    elif "python" in text_lower:
-
-        job_role = "Python Developer"
-
-    elif "react" in text_lower:
-
-        job_role = "React Developer"
-
-    elif "html" in text_lower and "css" in text_lower and "javascript" in text_lower:
-
-        job_role = "Frontend Web Developer"
-
-    elif "sql" in text_lower:
-
-        job_role = "Database Developer"
-
-    # =====================================
-    # Dashboard
-    # =====================================
-
-    st.markdown("## 📊 AI Dashboard")
-
-    col1, col2, col3, col4 = st.columns(4)
-
-    col1.metric("👤 Candidate", candidate_name)
-
-    col2.metric("📊 ATS Score", f"{score}/100")
-
-    col3.metric("💡 Skills", len(found_skills))
-
-    col4.metric("💼 Job Role", job_role)
-
-    # =====================================
-    # Skills
-    # =====================================
-
-    st.markdown("## 💡 Skills Detected")
+    st.subheader("💡 Skills Detected")
 
     if found_skills:
 
@@ -401,80 +430,308 @@ if uploaded_file is not None:
 
         st.error("No Skills Found")
 
-    # =====================================
-    # Experience
-    # =====================================
+    # --------------------------------------
+    # ATS Score
+    # --------------------------------------
 
-    st.markdown("## 💼 Experience")
+    score = 0
+
+    score += min(len(found_skills) * 4, 40)
+
+    if candidate_name != "Not Found":
+        score += 10
+
+    if email != "Not Found":
+        score += 10
+
+    if phone != "Not Found":
+        score += 10
+
+    if found_education:
+        score += 15
 
     if experience:
+        score += 15
 
-        st.success(", ".join(experience))
+    if score > 100:
+        score = 100
 
-    else:
-
-        st.warning("Experience Not Found")
-
-    # =====================================
-    # ATS Score Progress
-    # =====================================
-
-    st.markdown("## 📈 ATS Score")
+    st.subheader("📊 ATS Score")
 
     st.progress(score)
 
-    st.write(f"### Overall ATS Score: {score}/100")
+    st.success(f"{score}/100")
 
-    # =====================================
-    # AI Recommendation
-    # =====================================
+    # --------------------------------------
+    # Resume Rating
+    # --------------------------------------
 
-    st.markdown("## 🤖 AI Recommendation")
+    if score >= 85:
 
-    if score >= 80:
+        rating = "⭐⭐⭐⭐⭐ Excellent"
 
-        rating = "⭐⭐⭐⭐⭐"
+    elif score >= 70:
 
-        recommendation = "Excellent Resume"
+        rating = "⭐⭐⭐⭐ Very Good"
 
-        st.success("🟢 Highly Recommended for Interview")
+    elif score >= 55:
 
-    elif score >= 60:
+        rating = "⭐⭐⭐ Good"
 
-        rating = "⭐⭐⭐⭐"
+    elif score >= 40:
 
-        recommendation = "Good Resume"
-
-        st.warning("🟡 Good Resume - Add more relevant skills")
+        rating = "⭐⭐ Average"
 
     else:
 
-        rating = "⭐⭐"
+        rating = "⭐ Needs Improvement"
 
-        recommendation = "Needs Improvement"
+    st.subheader("🏆 Resume Rating")
 
-        st.error("🔴 Improve your resume before applying")
+    st.info(rating)
 
-    st.write(f"### ⭐ Rating : {rating}")
-    # =====================================
-    # Resume vs Job Description Matching
-    # =====================================
+    # --------------------------------------
+    # AI Recommendation
+    # --------------------------------------
 
-    st.markdown("## 💼 Resume vs Job Description Matching")
+    if score >= 80:
+
+        recommendation = "✅ Highly Recommended"
+
+    elif score >= 60:
+
+        recommendation = "🟡 Recommended with Minor Improvements"
+
+    else:
+
+        recommendation = "❌ Needs Significant Improvement"
+
+    st.subheader("🤖 AI Recommendation")
+
+    if score >= 80:
+
+        st.success(recommendation)
+
+    elif score >= 60:
+
+        st.warning(recommendation)
+
+    else:
+
+        st.error(recommendation)
+
+    # --------------------------------------
+    # Job Role Prediction
+    # --------------------------------------
+
+    if "machine learning" in text.lower() or "deep learning" in text.lower():
+
+        job_role = "Machine Learning Engineer"
+
+    elif "data science" in text.lower():
+
+        job_role = "Data Scientist"
+
+    elif "python" in text.lower():
+
+        job_role = "Python Developer"
+
+    elif "java" in text.lower():
+
+        job_role = "Java Developer"
+
+    elif "react" in text.lower():
+
+        job_role = "Frontend Developer"
+
+    elif "node.js" in text.lower():
+
+        job_role = "Backend Developer"
+
+    elif "sql" in text.lower():
+
+        job_role = "Database Developer"
+
+    else:
+
+        job_role = "General Software Engineer"
+
+    st.subheader("🎯 Suggested Job Role")
+
+    st.success(job_role)
+    # ==========================================
+# PART 5
+# Dashboard + Charts + Resume Summary
+# ==========================================
+
+    # --------------------------------------
+    # Dashboard Metrics
+    # --------------------------------------
+
+    st.markdown("---")
+    st.subheader("📊 Resume Dashboard")
+
+    col1, col2, col3, col4 = st.columns(4)
+
+    col1.metric("ATS Score", f"{score}/100")
+    col2.metric("Skills", len(found_skills))
+    col3.metric("Education", len(found_education))
+    col4.metric("Experience", len(experience))
+
+    # --------------------------------------
+    # Skills Pie Chart
+    # --------------------------------------
+
+    st.subheader("📈 Skills Analytics")
+
+    total_skills = len(skills)
+    detected = len(found_skills)
+    missing = total_skills - detected
+
+    pie = px.pie(
+        values=[detected, missing],
+        names=["Detected", "Missing"],
+        title="Skills Distribution"
+    )
+
+    st.plotly_chart(
+        pie,
+        use_container_width=True
+    )
+
+    # --------------------------------------
+    # ATS Gauge
+    # --------------------------------------
+
+    gauge = go.Figure(
+
+        go.Indicator(
+
+            mode="gauge+number",
+
+            value=score,
+
+            title={"text": "ATS Score"},
+
+            gauge={
+
+                "axis": {"range": [0, 100]},
+
+                "bar": {"color": "green"},
+
+                "steps": [
+
+                    {"range": [0, 40], "color": "#ffcccc"},
+
+                    {"range": [40, 70], "color": "#fff4cc"},
+
+                    {"range": [70, 100], "color": "#d4edda"}
+
+                ]
+
+            }
+
+        )
+
+    )
+
+    st.plotly_chart(
+        gauge,
+        use_container_width=True
+    )
+
+    # --------------------------------------
+    # Resume Summary
+    # --------------------------------------
+
+    st.subheader("📝 Resume Summary")
+
+    st.info(f"""
+
+👤 Candidate Name:
+{candidate_name}
+
+📧 Email:
+{email}
+
+📞 Phone:
+{phone}
+
+🎓 Education:
+{", ".join(found_education) if found_education else "Not Found"}
+
+💼 Experience:
+{", ".join(experience) if experience else "Not Found"}
+
+💡 Skills:
+{len(found_skills)}
+
+🎯 Suggested Role:
+{job_role}
+
+📊 ATS Score:
+{score}/100
+
+🏆 Rating:
+{rating}
+
+🤖 Recommendation:
+{recommendation}
+
+""")
+
+    # --------------------------------------
+    # Resume Improvement Suggestions
+    # --------------------------------------
+
+    st.subheader("🚀 Resume Improvement Suggestions")
+
+    suggestions = []
+
+    if len(found_skills) < 8:
+        suggestions.append("Add more technical skills related to your field.")
+
+    if not experience:
+        suggestions.append("Include internship or job experience.")
+
+    if not found_education:
+        suggestions.append("Mention your education details clearly.")
+
+    if email == "Not Found":
+        suggestions.append("Add a professional email address.")
+
+    if phone == "Not Found":
+        suggestions.append("Add your contact number.")
+
+    if suggestions:
+
+        for item in suggestions:
+
+            st.warning("💡 " + item)
+
+    else:
+
+        st.success("🎉 Excellent! Your resume looks professional.")
+        # ==========================================
+# PART 6
+# Resume vs Job Description Matching
+# ==========================================
+
+    st.markdown("---")
+    st.subheader("💼 Resume vs Job Description Matching")
 
     job_description = st.text_area(
         "Paste Job Description Here",
-        height=200,
+        height=220,
         placeholder="Paste the complete Job Description..."
     )
 
-    matched_skills = []
-    missing_skills = []
-    ats_match = 0
-
-    if job_description.strip():
+    if job_description:
 
         jd_lower = job_description.lower()
+
+        matched_skills = []
+        missing_skills = []
 
         for skill in skills:
 
@@ -488,609 +745,500 @@ if uploaded_file is not None:
 
                     missing_skills.append(skill)
 
-        total = len(matched_skills) + len(missing_skills)
+        total_required = len(matched_skills) + len(missing_skills)
 
-        if total > 0:
+        if total_required > 0:
 
-            ats_match = int(
-                (len(matched_skills) / total) * 100
+            match_score = int(
+                (len(matched_skills) / total_required) * 100
             )
 
-        st.markdown("### 🎯 ATS Match Score")
+        else:
 
-        st.progress(ats_match)
+            match_score = 0
 
-        st.write(f"### {ats_match}% Match")
+        # --------------------------------------
+        # Match Score
+        # --------------------------------------
 
-        left, right = st.columns(2)
+        st.subheader("🎯 Resume Match Score")
 
-        with left:
+        st.progress(match_score)
 
-            st.success("✅ Matched Skills")
+        st.success(f"{match_score}% Match")
 
-            if matched_skills:
+        # --------------------------------------
+        # Dashboard
+        # --------------------------------------
 
-                for skill in matched_skills:
+        col1, col2, col3 = st.columns(3)
 
-                    st.write("✔", skill)
+        col1.metric(
+            "Matched Skills",
+            len(matched_skills)
+        )
 
-            else:
+        col2.metric(
+            "Missing Skills",
+            len(missing_skills)
+        )
 
-                st.write("No Skills Matched")
+        col3.metric(
+            "Match %",
+            f"{match_score}%"
+        )
 
-        with right:
+        # --------------------------------------
+        # Matched Skills
+        # --------------------------------------
 
-            st.error("❌ Missing Skills")
+        st.subheader("✅ Matched Skills")
 
-            if missing_skills:
+        if matched_skills:
 
-                for skill in missing_skills:
+            st.success(", ".join(matched_skills))
 
-                    st.write("✖", skill)
+        else:
 
-            else:
+            st.warning("No matching skills found.")
 
-                st.write("No Missing Skills")
+        # --------------------------------------
+        # Missing Skills
+        # --------------------------------------
 
-    # =====================================
-    # Skills Chart
-    # =====================================
+        st.subheader("❌ Missing Skills")
 
-    st.markdown("## 📊 Skills Analysis")
+        if missing_skills:
 
-    chart = pd.DataFrame({
+            st.error(", ".join(missing_skills))
 
-        "Category":[
-            "Detected Skills",
-            "Missing Skills"
-        ],
+        else:
 
-        "Count":[
-            len(found_skills),
-            len(skills)-len(found_skills)
-        ]
+            st.success("Excellent! No missing skills.")
 
-    })
+        # --------------------------------------
+        # AI Feedback
+        # --------------------------------------
 
-    st.bar_chart(chart.set_index("Category"))
+        st.subheader("🤖 AI Feedback")
 
-    # =====================================
-    # Resume Summary
-    # =====================================
+        if match_score >= 80:
 
-    st.markdown("## 📝 Resume Summary")
+            st.success(
+                "Excellent match! Your resume is highly aligned with the Job Description."
+            )
 
-    st.info(f"""
+        elif match_score >= 60:
 
-👤 Candidate : {candidate_name}
+            st.warning(
+                "Good match. Add a few more relevant skills to improve your chances."
+            )
 
-📧 Email : {email}
+        elif match_score >= 40:
 
-📞 Phone : {phone}
+            st.info(
+                "Average match. Consider updating your resume according to the Job Description."
+            )
 
-🎓 Education :
-{", ".join(found_education) if found_education else "Not Found"}
+        else:
 
-💼 Suggested Role :
-{job_role}
+            st.error(
+                "Poor match. Add the missing skills and relevant experience before applying."
+            )
 
-⭐ Rating :
-{rating}
+    else:
 
-📊 ATS Score :
-{score}/100
+        st.info(
+            "Paste a Job Description above to calculate Resume Match Score."
+        )
+        # ==========================================
+# PART 7
+# Professional PDF Report + Download
+# ==========================================
 
-💡 Skills Found :
-{len(found_skills)}
+    st.markdown("---")
+    st.subheader("📄 Professional Resume Report")
 
-🤖 Recommendation :
-{recommendation}
+    def generate_pdf_report():
 
-""")
+        buffer = BytesIO()
 
-    # =====================================
-    # Download Report
-    # =====================================
+        doc = SimpleDocTemplate(buffer)
 
-    report = f"""
-SMART RESUME SCREENER AI REPORT
+        styles = getSampleStyleSheet()
 
-Candidate Name:
-{candidate_name}
+        story = []
 
-Email:
-{email}
+        story.append(
+            Paragraph(
+                "<b>Smart Resume Screener AI Report</b>",
+                styles["Title"]
+            )
+        )
 
-Phone:
-{phone}
+        story.append(
+            Paragraph("<br/>", styles["Normal"])
+        )
 
-Education:
-{", ".join(found_education) if found_education else "Not Found"}
+        story.append(
+            Paragraph(
+                f"<b>Candidate Name:</b> {candidate_name}",
+                styles["BodyText"]
+            )
+        )
 
-Experience:
-{", ".join(experience) if experience else "Not Found"}
+        story.append(
+            Paragraph(
+                f"<b>Email:</b> {email}",
+                styles["BodyText"]
+            )
+        )
 
-Skills:
-{", ".join(found_skills) if found_skills else "Not Found"}
+        story.append(
+            Paragraph(
+                f"<b>Phone:</b> {phone}",
+                styles["BodyText"]
+            )
+        )
 
-Suggested Job Role:
-{job_role}
+        story.append(
+            Paragraph(
+                f"<b>Education:</b> {', '.join(found_education) if found_education else 'Not Found'}",
+                styles["BodyText"]
+            )
+        )
 
-ATS Score:
-{score}/100
+        story.append(
+            Paragraph(
+                f"<b>Experience:</b> {', '.join(experience) if experience else 'Not Found'}",
+                styles["BodyText"]
+            )
+        )
 
-Rating:
-{rating}
+        story.append(
+            Paragraph(
+                f"<b>Skills:</b> {', '.join(found_skills) if found_skills else 'None'}",
+                styles["BodyText"]
+            )
+        )
 
-Recommendation:
-{recommendation}
-"""
+        story.append(
+            Paragraph(
+                f"<b>Suggested Job Role:</b> {job_role}",
+                styles["BodyText"]
+            )
+        )
+
+        story.append(
+            Paragraph(
+                f"<b>ATS Score:</b> {score}/100",
+                styles["Heading2"]
+            )
+        )
+
+        story.append(
+            Paragraph(
+                f"<b>Resume Rating:</b> {rating}",
+                styles["BodyText"]
+            )
+        )
+
+        story.append(
+            Paragraph(
+                f"<b>AI Recommendation:</b> {recommendation}",
+                styles["BodyText"]
+            )
+        )
+
+        if job_description:
+
+            story.append(
+                Paragraph(
+                    f"<b>Resume Match Score:</b> {match_score}%",
+                    styles["Heading2"]
+                )
+            )
+
+            story.append(
+                Paragraph(
+                    f"<b>Matched Skills:</b> {', '.join(matched_skills) if matched_skills else 'None'}",
+                    styles["BodyText"]
+                )
+            )
+
+            story.append(
+                Paragraph(
+                    f"<b>Missing Skills:</b> {', '.join(missing_skills) if missing_skills else 'None'}",
+                    styles["BodyText"]
+                )
+            )
+
+        story.append(
+            Paragraph("<br/>", styles["Normal"])
+        )
+
+        story.append(
+            Paragraph(
+                "<b>Resume Improvement Suggestions</b>",
+                styles["Heading2"]
+            )
+        )
+
+        if suggestions:
+
+            for item in suggestions:
+
+                story.append(
+                    Paragraph(
+                        "• " + item,
+                        styles["BodyText"]
+                    )
+                )
+
+        else:
+
+            story.append(
+                Paragraph(
+                    "Excellent! No improvements required.",
+                    styles["BodyText"]
+                )
+            )
+
+        doc.build(story)
+
+        pdf = buffer.getvalue()
+
+        buffer.close()
+
+        return pdf
+
+    pdf_file = generate_pdf_report()
 
     st.download_button(
 
-        "📄 Download Resume Report",
+        label="📥 Download Professional PDF Report",
 
-        report,
+        data=pdf_file,
 
-        file_name="Resume_Report.txt",
+        file_name="Resume_Analysis_Report.pdf",
 
-        mime="text/plain"
+        mime="application/pdf"
 
     )
-
-    # =====================================
-    # Footer
-    # =====================================
+    # ==========================================
+# PART 8
+# Final Dashboard + About + Footer
+# ==========================================
 
     st.markdown("---")
 
-    st.markdown(
-        """
-<div style='text-align:center;
-padding:20px;
-color:gray;'>
+    st.subheader("📊 Final Analysis Dashboard")
 
-❤️ Smart Resume Screener AI
+    c1, c2, c3, c4 = st.columns(4)
 
-Industry Edition Version 4.0
-
-Built with Python • Streamlit • OCR
-
-</div>
-""",
-        unsafe_allow_html=True
+    c1.metric(
+        "ATS Score",
+        f"{score}/100"
     )
 
-else:
-
-    st.info("👆 Upload a Resume PDF to start analysis.")
-    # =====================================
-# Resume Improvement Suggestions
-# =====================================
-
-st.markdown("## 🚀 Resume Improvement Suggestions")
-
-suggestions = []
-
-if score < 80:
-    suggestions.append("Add more relevant technical skills.")
-
-if not experience:
-    suggestions.append("Mention your work experience or internships.")
-
-if not found_education:
-    suggestions.append("Add your educational qualifications.")
-
-if len(found_skills) < 8:
-    suggestions.append("Include more tools and technologies related to your field.")
-
-if email == "Not Found":
-    suggestions.append("Add a professional email address.")
-
-if phone == "Not Found":
-    suggestions.append("Add your contact number.")
-
-if suggestions:
-
-    for tip in suggestions:
-
-        st.warning("💡 " + tip)
-
-else:
-
-    st.success("🎉 Excellent! Your resume looks professional.")
-
-# =====================================
-# Candidate Performance
-# =====================================
-
-st.markdown("## 🏆 Candidate Performance")
-
-if score >= 80:
-
-    st.success("🌟 Excellent Candidate")
-
-elif score >= 60:
-
-    st.info("👍 Good Candidate")
-
-elif score >= 40:
-
-    st.warning("⚠ Average Candidate")
-
-else:
-
-    st.error("❌ Needs Major Improvements")
-
-# =====================================
-# AI Decision
-# =====================================
-
-st.markdown("## 🤖 Final AI Decision")
-
-if score >= 80:
-
-    st.success("✅ Recommended for Interview")
-
-elif score >= 60:
-
-    st.info("🟡 Can be shortlisted after improvements")
-
-else:
-
-    st.error("❌ Not Recommended")
-
-# =====================================
-# Analysis Completion
-# =====================================
-
-st.balloons()
-
-st.success("🎉 Resume Analysis Completed Successfully!")
-# =====================================
-# Resume Improvement Suggestions
-# =====================================
-
-st.markdown("## 🚀 Resume Improvement Suggestions")
-
-suggestions = []
-
-if score < 80:
-    suggestions.append("Add more relevant technical skills.")
-
-if not experience:
-    suggestions.append("Mention your work experience or internships.")
-
-if not found_education:
-    suggestions.append("Add your educational qualifications.")
-
-if len(found_skills) < 8:
-    suggestions.append("Include more tools and technologies related to your field.")
-
-if email == "Not Found":
-    suggestions.append("Add a professional email address.")
-
-if phone == "Not Found":
-    suggestions.append("Add your contact number.")
-
-if suggestions:
-
-    for tip in suggestions:
-
-        st.warning("💡 " + tip)
-
-else:
-
-    st.success("🎉 Excellent! Your resume looks professional.")
-
-# =====================================
-# Candidate Performance
-# =====================================
-
-st.markdown("## 🏆 Candidate Performance")
-
-if score >= 80:
-
-    st.success("🌟 Excellent Candidate")
-
-elif score >= 60:
-
-    st.info("👍 Good Candidate")
-
-elif score >= 40:
-
-    st.warning("⚠ Average Candidate")
-
-else:
-
-    st.error("❌ Needs Major Improvements")
-
-# =====================================
-# AI Decision
-# =====================================
-
-st.markdown("## 🤖 Final AI Decision")
-
-if score >= 80:
-
-    st.success("✅ Recommended for Interview")
-
-elif score >= 60:
-
-    st.info("🟡 Can be shortlisted after improvements")
-
-else:
-
-    st.error("❌ Not Recommended")
-
-# =====================================
-# Analysis Completion
-# =====================================
-
-st.balloons()
-
-st.success("🎉 Resume Analysis Completed Successfully!")
-# =====================================
-# Professional PDF Report
-# =====================================
-
-st.markdown("## 📄 Professional PDF Report")
-
-def generate_pdf():
-
-    buffer = BytesIO()
-
-    doc = SimpleDocTemplate(buffer)
-
-    styles = getSampleStyleSheet()
-
-    story = []
-
-    story.append(
-        Paragraph("<b>SMART RESUME SCREENER AI REPORT</b>", styles["Title"])
-    )
-
-    story.append(
-        Paragraph(f"<b>Candidate Name:</b> {candidate_name}", styles["Normal"])
-    )
-
-    story.append(
-        Paragraph(f"<b>Email:</b> {email}", styles["Normal"])
-    )
-
-    story.append(
-        Paragraph(f"<b>Phone:</b> {phone}", styles["Normal"])
-    )
-
-    story.append(
-        Paragraph(
-            f"<b>Education:</b> {', '.join(found_education) if found_education else 'Not Found'}",
-            styles["Normal"]
-        )
-    )
-
-    story.append(
-        Paragraph(
-            f"<b>Experience:</b> {', '.join(experience) if experience else 'Not Found'}",
-            styles["Normal"]
-        )
-    )
-
-    story.append(
-        Paragraph(
-            f"<b>Skills:</b> {', '.join(found_skills)}",
-            styles["Normal"]
-        )
-    )
-
-    story.append(
-        Paragraph(
-            f"<b>Suggested Job Role:</b> {job_role}",
-            styles["Normal"]
-        )
-    )
-
-    story.append(
-        Paragraph(
-            f"<b>ATS Score:</b> {score}/100",
-            styles["Normal"]
-        )
-    )
-
-    story.append(
-        Paragraph(
-            f"<b>Rating:</b> {rating}",
-            styles["Normal"]
-        )
-    )
-
-    story.append(
-        Paragraph(
-            f"<b>Recommendation:</b> {recommendation}",
-            styles["Normal"]
-        )
-    )
-
-    doc.build(story)
-
-    pdf = buffer.getvalue()
-
-    buffer.close()
-
-    return pdf
-
-
-pdf_report = generate_pdf()
-
-st.download_button(
-
-    label="📥 Download Professional PDF Report",
-
-    data=pdf_report,
-
-    file_name="Smart_Resume_Report.pdf",
-
-    mime="application/pdf"
-
-)
-
-st.success("✅ Professional PDF Report Ready")
-# =====================================
-# FINAL DASHBOARD
-# =====================================
-
-st.markdown("---")
-st.markdown("## 🎯 Resume Health Dashboard")
-
-col1, col2, col3, col4 = st.columns(4)
-
-col1.success(f"""
-### 📊 ATS
-
-# {score}/100
-""")
-
-col2.info(f"""
-### 💡 Skills
-
-# {len(found_skills)}
-""")
-
-col3.warning(f"""
-### 🎓 Education
-
-# {len(found_education)}
-""")
-
-col4.error(f"""
-### 💼 Experience
-
-# {len(experience)}
-""")
-
-# =====================================
-# PROJECT STATISTICS
-# =====================================
-
-st.markdown("## 📈 Analysis Statistics")
-
-stat1, stat2 = st.columns(2)
-
-with stat1:
-
-    st.metric(
-        "Resume Completion",
-        f"{score}%"
-    )
-
-    st.metric(
-        "Matched Skills",
+    c2.metric(
+        "Skills",
         len(found_skills)
     )
 
-with stat2:
-
-    st.metric(
-        "Education Entries",
+    c3.metric(
+        "Education",
         len(found_education)
     )
 
-    st.metric(
-        "Experience Entries",
+    c4.metric(
+        "Experience",
         len(experience)
     )
 
-# =====================================
-# ABOUT PROJECT
-# =====================================
+    st.markdown("---")
 
-st.markdown("---")
+    st.subheader("📈 Resume Performance")
 
-with st.expander("ℹ️ About Smart Resume Screener AI"):
+    if score >= 85:
 
-    st.markdown("""
+        st.success(
+            "🌟 Outstanding Resume! Highly competitive for professional opportunities."
+        )
+
+    elif score >= 70:
+
+        st.success(
+            "✅ Strong Resume. Minor improvements can make it even better."
+        )
+
+    elif score >= 50:
+
+        st.warning(
+            "⚠ Good Resume. Add more skills and experience to increase ATS score."
+        )
+
+    else:
+
+        st.error(
+            "❌ Resume needs significant improvements before applying."
+        )
+
+    st.markdown("---")
+
+    with st.expander("ℹ️ About Smart Resume Screener AI"):
+
+        st.markdown("""
 
 ### 📄 Smart Resume Screener AI
 
 This application analyzes resumes using Artificial Intelligence techniques.
 
-### Features
+### ✨ Features
 
-✅ OCR Support
+- OCR Support
+- Text PDF Support
+- Candidate Name Detection
+- Email Detection
+- Phone Detection
+- Education Detection
+- Experience Detection
+- Skills Detection
+- ATS Score Calculation
+- Resume Rating
+- AI Recommendation
+- Job Role Prediction
+- Resume vs Job Description Matching
+- Interactive Charts
+- Professional PDF Report
 
-✅ ATS Score
-
-✅ Skills Detection
-
-✅ Email Detection
-
-✅ Phone Detection
-
-✅ Education Detection
-
-✅ Experience Detection
-
-✅ Job Role Prediction
-
-✅ Resume vs Job Description Matching
-
-✅ Interactive Charts
-
-✅ Professional PDF Report
-
-### Technologies Used
+### 🛠 Technologies Used
 
 - Python
-
 - Streamlit
-
 - PDFPlumber
-
-- Pytesseract OCR
-
+- PDF2Image
+- PyTesseract
 - Plotly
-
 - Pandas
-
 - ReportLab
 
 """)
 
-# =====================================
-# FINAL SUCCESS MESSAGE
-# =====================================
+    st.markdown("---")
+
+    st.success("🎉 Resume Analysis Completed Successfully!")
+
+    st.balloons()
+
+    st.markdown(
+        """
+        <div style="text-align:center;padding:20px;">
+
+        <h3>📄 Smart Resume Screener AI</h3>
+
+        <p>
+        Industry Edition v5.0
+        </p>
+
+        <p>
+        Developed using Python • Streamlit • OCR • AI
+        </p>
+
+        <p>
+        © 2026 All Rights Reserved
+        </p>
+
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+else:
+
+    st.info("📂 Upload a Resume PDF to start analysis.")
+    # ==========================================
+# PART 9
+# Final Optimizations & Error Handling
+# ==========================================
+
+# --------------------------------------
+# Helpful Tips
+# --------------------------------------
+
+with st.sidebar:
+
+    st.markdown("---")
+
+    st.subheader("💡 Tips")
+
+    st.info(
+        """
+• Upload PDF resumes only
+
+• Text PDFs are faster
+
+• Scanned PDFs use OCR
+
+• Add Job Description for better ATS Matching
+
+• Download the final PDF report
+"""
+    )
+
+# --------------------------------------
+# AI Resume Score Explanation
+# --------------------------------------
 
 st.markdown("---")
 
-st.success("🎉 Resume Analysis Completed Successfully!")
+with st.expander("📘 How is ATS Score Calculated?"):
 
-st.balloons()
+    st.write("""
+The ATS Score is calculated using multiple resume factors.
 
-# =====================================
-# FOOTER
-# =====================================
+### Score Distribution
 
-st.markdown(
+- Skills → 40 Marks
+- Candidate Name → 10 Marks
+- Email → 10 Marks
+- Phone Number → 10 Marks
+- Education → 15 Marks
+- Experience → 15 Marks
+
+Maximum Score = 100
+""")
+
+# --------------------------------------
+# Disclaimer
+# --------------------------------------
+
+st.markdown("---")
+
+st.caption(
+    """
+⚠️ This application provides an AI-assisted resume analysis.
+The ATS score is an estimated evaluation and should not be
+considered an official hiring decision.
 """
-<hr>
-
-<div style="text-align:center">
-
-<h3>📄 Smart Resume Screener AI</h3>
-
-<p>
-Industry Edition Version 4.0
-</p>
-
-<p>
-Developed using ❤️ Python, Streamlit, OCR & AI
-</p>
-
-<p>
-© 2026 All Rights Reserved
-</p>
-
-</div>
-""",
-unsafe_allow_html=True
 )
+
+# --------------------------------------
+# Final Thank You
+# --------------------------------------
+
+st.markdown("---")
+
+st.success("✅ Smart Resume Screener AI is Ready!")
+
+st.info(
+    """
+Thank you for using Smart Resume Screener AI.
+
+Built for Educational & Professional Learning.
+"""
+)
+
+# ==========================================
+# END OF APPLICATION
+# ==========================================
